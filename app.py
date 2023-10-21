@@ -4,21 +4,71 @@ from streamlit_chat import message
 import cohere
 global arr
 
+
+from elevenlabs import generate, set_api_key
+import os
+
+audio_path = 'audios'
+
+def voiceover(text, elevenlabs_api_key):
+    
+    set_api_key(elevenlabs_api_key)
+
+    idx = len(os.listdir(audio_path)) + 1
+
+    name = f'{idx}.mp3'
+    audio_file = f'{audio_path}/{name}'
+
+    audio = generate(
+        text=text,
+        voice="Bella",
+        model="eleven_monolingual_v1"
+    )
+
+    try:
+        with open(audio_file, 'wb') as f:
+            f.write(audio)
+
+        return name
+    
+    except Exception as e:
+        print(e)
+
+        return ""
+
+
+
 def clear_chat():
+    st.session_state.messages.clear()
     st.session_state.messages = [{"role": "assistant", "content": "Say something to get started!"}]
+    
+    # List all files in the directory
+    file_list = os.listdir(audio_path)
+
+    # Iterate through the files and remove them
+    for filename in file_list:
+        file_path = os.path.join(audio_path, filename)
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+
 
 st.set_page_config(page_title="Search Optimizer", page_icon="👀")
 
 st.title("Search Optimizer")
 
 st.markdown(
-    "This is demo showcase of Cohere Rerank (Beta) model. It allows to optimize search algorithms and improve search results."
+    "This is demo showcase of Cohere Rerank (Beta) model with integration ElevenLab's cutting-edge voice AI."
 )
 
 with st.sidebar:
     arr = []
     cohere_api_key = st.text_input('Cohere API Key', key='cohere_api_key')
-    "Don't have API Key? [Get for free](https://dashboard.cohere.com/api-keys)"
+    elevenlabs_api_key = st.text_input('ElevenLabs API Key', key='elevenlabs_api_key')
+
+    "Don't have API Keys?"
+    "[Get Cohere API Key](https://dashboard.cohere.com/api-keys)"
+    "[Get ElevenLabs API Key](https://elevenlabs.io/)"
+
     "[View the source code](https://github.com/abdibrokhim/Cohere-Rerank-Tutorial)"
 
     file = st.file_uploader(label="Upload file", type=["txt",])
@@ -115,6 +165,12 @@ Relevance Score: {r.relevance_score:.2f}
 
     for msgs in msg["content"]:
         message(msgs, is_user=False, key=msgs)
+        
+        file_name = voiceover(msgs, elevenlabs_api_key=elevenlabs_api_key)
+        audio_file = open(f"{audio_path}/{file_name}", 'rb')
+        audio_bytes = audio_file.read()
+        
+        st.audio(audio_bytes, format="audio/mp3", start_time=0)
 
 
 if len(st.session_state.messages) > 1:
